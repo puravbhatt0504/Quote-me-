@@ -44,15 +44,7 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
         calculateTotals,
     } = useQuotation();
 
-    const settings = {
-        ...contextSettings,
-        address: 'Corporate Office : 10/13, Sector -3, Rajender Nagar, Sahibabad, Ghaziabad, U.P.: 201005',
-        phone: '09810229094, 09818445646',
-        email: 'cityfiresservices@gmail.com',
-        website: 'www.cityfireservices.com',
-        gst: '09AHXPB5978Q1Z1',
-        certification: 'ISO 9001:2015.......Certified'
-    };
+    const settings = contextSettings;
 
     if (!isOpen) return null;
 
@@ -237,15 +229,7 @@ export default function ActionButtons() {
         saveToHistory,
     } = useQuotation();
 
-    const settings = {
-        ...contextSettings,
-        address: 'Corporate Office : 10/13, Sector -3, Rajender Nagar, Sahibabad, Ghaziabad, U.P.: 201005',
-        phone: '09810229094, 09818445646',
-        email: 'cityfiresservices@gmail.com',
-        website: 'www.cityfireservices.com',
-        gst: '09AHXPB5978Q1Z1',
-        certification: 'ISO 9001:2015.......Certified'
-    };
+    const settings = contextSettings;
 
     const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
         setToast({ message, type });
