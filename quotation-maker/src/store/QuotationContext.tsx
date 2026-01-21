@@ -66,7 +66,7 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
                 setProducts(JSON.parse(storedProducts));
             }
             if (storedHistory) {
-                setHistory(JSON.parse(storedHistory));
+                setHistory(JSON.parse(storedHistory) as QuotationHistory[]);
             }
             if (storedSettings) {
                 setSettings({ ...defaultCompanySettings, ...JSON.parse(storedSettings) });
