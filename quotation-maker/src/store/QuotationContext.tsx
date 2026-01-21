@@ -56,6 +56,7 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
     const [additionalNotes, setAdditionalNotes] = useState('');
 
     // Load from localStorage on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedProducts = localStorage.getItem('cityfire_products');

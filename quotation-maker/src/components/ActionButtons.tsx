@@ -6,6 +6,7 @@ import { quotationTypes } from '@/data/products';
 import { generateExcelQuotation, formatDate } from '@/utils/excel';
 import { generatePdfQuotation } from '@/utils/pdf';
 import { Eye, Download, X, FileText } from 'lucide-react';
+import Image from 'next/image';
 import Toast from './Toast';
 
 // Toast Component
@@ -152,10 +153,13 @@ function PreviewModal({ isOpen, onClose, onDownloadExcel, onDownloadPdf }: { isO
                         <div className="flex justify-between text-sm items-end">
                             <div className="text-center relative">
                                 <div className="h-24 flex items-end justify-center mb-[-10px]">
-                                    <img
+                                    <Image
                                         src="/sign_stamp.png"
                                         alt="Signature Stamp"
+                                        width={128}
+                                        height={128}
                                         className="w-32 object-contain mix-blend-multiply"
+                                        unoptimized
                                     />
                                 </div>
                                 <div className="w-40 border-b border-gray-800 mb-2" />
