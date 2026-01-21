@@ -68,11 +68,11 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
                 setProducts(JSON.parse(storedProducts));
             }
             if (storedHistory) {
-                // eslint-disable-next-line
+
                 setHistory(JSON.parse(storedHistory) as QuotationHistory[]);
             }
             if (storedSettings) {
-                // eslint-disable-next-line
+
                 setSettings({ ...defaultCompanySettings, ...JSON.parse(storedSettings) });
             }
 
