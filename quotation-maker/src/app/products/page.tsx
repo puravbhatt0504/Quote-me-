@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuotation } from '@/store/QuotationContext';
 import { Header, Card } from '@/components';
+import Toast from '@/components/Toast';
 import { categoryNames } from '@/data/products';
 import { Package, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { Product } from '@/types';
@@ -12,6 +13,7 @@ export default function ProductsPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<{ name: string; rate: number }>({ name: '', rate: 0 });
     const [showAddForm, setShowAddForm] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
     const [newProduct, setNewProduct] = useState<Partial<Product>>({
         name: '',
         category: 'refilling',
@@ -54,6 +56,8 @@ export default function ProductsPage() {
         setProducts([...products, product]);
         setNewProduct({ name: '', category: 'refilling', unit: 'Each', rate: 0 });
         setShowAddForm(false);
+        setToast({ message: 'Product added successfully!', type: 'success' });
+        setTimeout(() => setToast(null), 3000);
     };
 
     const groupedProducts = products.reduce((acc, product) => {
@@ -113,7 +117,20 @@ export default function ProductsPage() {
                                     <option value="new-supply">New Supply</option>
                                     <option value="accessories">Accessories</option>
                                     <option value="hpt">HPT</option>
+                                    <option value="amc">AMC</option>
+                                    <option value="general">General</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label htmlFor="newProductUnit" className="sr-only">Unit</label>
+                                <input
+                                    id="newProductUnit"
+                                    type="text"
+                                    placeholder="Unit (e.g. Each, Mtr)"
+                                    value={newProduct.unit}
+                                    onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+                                />
                             </div>
                             <div>
                                 <label htmlFor="newProductRate" className="sr-only">Rate</label>
@@ -234,6 +251,14 @@ export default function ProductsPage() {
                     ))}
                 </div>
             </Card>
+
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </>
     );
 }

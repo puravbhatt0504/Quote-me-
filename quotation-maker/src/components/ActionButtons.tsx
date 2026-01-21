@@ -4,29 +4,11 @@ import { useState } from 'react';
 import { useQuotation } from '@/store/QuotationContext';
 import { quotationTypes } from '@/data/products';
 import { generateExcelQuotation, formatDate } from '@/utils/excel';
-import { Eye, Download, X, Check, AlertTriangle } from 'lucide-react';
+import { Eye, Download, X } from 'lucide-react';
+import Toast from './Toast';
 
 // Toast Component
-function Toast({ message, type }: { message: string; type: 'success' | 'error' | 'warning' }) {
-    const icons = {
-        success: <Check className="w-5 h-5" />,
-        error: <X className="w-5 h-5" />,
-        warning: <AlertTriangle className="w-5 h-5" />,
-    };
 
-    const colors = {
-        success: 'border-l-green-500 text-green-400',
-        error: 'border-l-red-500 text-red-400',
-        warning: 'border-l-yellow-500 text-yellow-400',
-    };
-
-    return (
-        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-5 py-4 bg-slate-800 border border-slate-700 border-l-4 ${colors[type]} rounded-xl shadow-lg z-50 animate-slide-in`}>
-            {icons[type]}
-            <span className="text-white">{message}</span>
-        </div>
-    );
-}
 
 // Preview Modal Component
 function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClose: () => void; onDownload: () => void }) {
