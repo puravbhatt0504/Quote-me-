@@ -169,14 +169,7 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
                             </ol>
                         </div>
 
-                        {/* Bank Details */}
-                        <div className="text-xs mb-8">
-                            <strong>Mode of Payment:</strong> Through Cheque / NEFT / RTGS / DD<br />
-                            Bank Name: {settings.bankName}<br />
-                            Branch: {settings.bankBranch}<br />
-                            A/C No.: {settings.accountNumber}<br />
-                            IFSC Code: {settings.ifscCode}
-                        </div>
+
 
                         <p className="text-sm mb-10">Thanks & Regards</p>
 

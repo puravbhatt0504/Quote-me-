@@ -225,26 +225,7 @@ export async function generateExcelQuotation(params: GenerateExcelParams): Promi
     worksheet.getCell(`B${rowNum}`).alignment = { wrapText: true };
     rowNum++;
 
-    worksheet.getCell(`A${rowNum}`).value = '2';
-    worksheet.mergeCells(`B${rowNum}:F${rowNum}`);
-    worksheet.getCell(`B${rowNum}`).value = 'Mode of Payment :- Through Cheque / NEFT / RTGS / DD.';
-    rowNum++;
 
-    worksheet.mergeCells(`B${rowNum}:F${rowNum}`);
-    worksheet.getCell(`B${rowNum}`).value = `Bank Name : ${settings.bankName}`;
-    rowNum++;
-
-    worksheet.mergeCells(`B${rowNum}:F${rowNum}`);
-    worksheet.getCell(`B${rowNum}`).value = `Add. - ${settings.bankBranch}`;
-    rowNum++;
-
-    worksheet.mergeCells(`B${rowNum}:F${rowNum}`);
-    worksheet.getCell(`B${rowNum}`).value = `A/C No. : ${settings.accountNumber}`;
-    rowNum++;
-
-    worksheet.mergeCells(`B${rowNum}:F${rowNum}`);
-    worksheet.getCell(`B${rowNum}`).value = `IFSC Code : ${settings.ifscCode}`;
-    rowNum++;
 
     rowNum++; // Empty row
 
