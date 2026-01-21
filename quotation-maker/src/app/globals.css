@@ -97,3 +97,37 @@ select option {
   background-position: right 12px center;
   background-size: 18px;
 }
+
+/* Printing Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .printable-content, .printable-content * {
+    visibility: visible;
+  }
+
+  .printable-content {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+    color: black !important;
+    height: auto;
+    overflow: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Ensure background colors are printed for the table headers */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

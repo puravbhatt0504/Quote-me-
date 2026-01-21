@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { useQuotation } from '@/store/QuotationContext';
 import { quotationTypes } from '@/data/products';
 import { generateExcelQuotation, formatDate } from '@/utils/excel';
-import { Eye, Download, X } from 'lucide-react';
+import { generatePdfQuotation } from '@/utils/pdf';
+import { Eye, Download, X, FileText } from 'lucide-react';
 import Toast from './Toast';
 
 // Toast Component
 
 
 // Preview Modal Component
-function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClose: () => void; onDownload: () => void }) {
+function PreviewModal({ isOpen, onClose, onDownloadExcel, onDownloadPdf }: { isOpen: boolean; onClose: () => void; onDownloadExcel: () => void; onDownloadPdf: () => void }) {
     const {
         selectedItems,
         settings: contextSettings,
@@ -37,7 +38,7 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-10">
             <div className="bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-slide">
                 {/* Modal Header */}
-                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between no-print">
                     <h3 className="text-xl font-semibold text-white">Quotation Preview</h3>
                     <button
                         onClick={onClose}
@@ -50,7 +51,7 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
                 </div>
 
                 {/* Modal Body */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-6 printable-content">
                     <div className="bg-white text-gray-800 p-10 rounded-xl font-serif">
                         {/* Company Header */}
                         <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
@@ -172,7 +173,7 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
                 </div>
 
                 {/* Modal Footer */}
-                <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+                <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3 no-print">
                     <button
                         onClick={onClose}
                         className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
@@ -180,11 +181,18 @@ function PreviewModal({ isOpen, onClose, onDownload }: { isOpen: boolean; onClos
                         Close
                     </button>
                     <button
-                        onClick={onDownload}
+                        onClick={onDownloadPdf}
+                        className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-red-600/30 transition-all"
+                    >
+                        <FileText className="w-5 h-5" />
+                        PDF
+                    </button>
+                    <button
+                        onClick={onDownloadExcel}
                         className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-orange-500/30 transition-all"
                     >
                         <Download className="w-5 h-5" />
-                        Download Excel
+                        Excel
                     </button>
                 </div>
             </div>
@@ -226,7 +234,7 @@ export default function ActionButtons() {
         setShowPreview(true);
     };
 
-    const handleGenerate = async () => {
+    const handleGenerateExcel = async () => {
         if (selectedItems.length === 0) {
             showToast('Please add at least one item to the quotation', 'warning');
             return;
@@ -252,10 +260,43 @@ export default function ActionButtons() {
 
             saveToHistory(clientName || 'Client', clientAddress, totals.total);
             setShowPreview(false);
-            showToast('Quotation generated successfully!', 'success');
+            showToast('Excel quotation generated successfully!', 'success');
         } catch (error) {
-            console.error('Error generating quotation:', error);
-            showToast('Error generating quotation. Please try again.', 'error');
+            console.error('Error generating Excel:', error);
+            showToast('Error generating Excel. Please try again.', 'error');
+        }
+    };
+
+    const handleGeneratePdf = async () => {
+        if (selectedItems.length === 0) {
+            showToast('Please add at least one item to the quotation', 'warning');
+            return;
+        }
+
+        try {
+            const totals = calculateTotals();
+            const quotationTypeText = quotationTypes.find(t => t.value === quotationType)?.label || 'Quotation';
+
+            generatePdfQuotation({
+                selectedItems,
+                totals,
+                clientName: clientName || 'Client',
+                clientAddress,
+                quotationDate,
+                quotationTypeText,
+                additionalNotes,
+                applyDiscount,
+                discountPercentage,
+                includeGST,
+                settings,
+            });
+
+            saveToHistory(clientName || 'Client', clientAddress, totals.total);
+            setShowPreview(false);
+            showToast('PDF quotation generated successfully!', 'success');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            showToast('Error generating PDF. Please try again.', 'error');
         }
     };
 
@@ -270,18 +311,26 @@ export default function ActionButtons() {
                     Preview
                 </button>
                 <button
-                    onClick={handleGenerate}
+                    onClick={handleGeneratePdf}
+                    className="px-7 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold flex items-center gap-2.5 shadow-lg shadow-red-600/30 hover:shadow-red-600/40 hover:-translate-y-0.5 transition-all"
+                >
+                    <FileText className="w-5 h-5" />
+                    PDF
+                </button>
+                <button
+                    onClick={handleGenerateExcel}
                     className="px-7 py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-semibold flex items-center gap-2.5 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all"
                 >
                     <Download className="w-5 h-5" />
-                    Generate & Download
+                    Excel
                 </button>
             </div>
 
             <PreviewModal
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
-                onDownload={handleGenerate}
+                onDownloadExcel={handleGenerateExcel}
+                onDownloadPdf={handleGeneratePdf}
             />
 
             {toast && (
