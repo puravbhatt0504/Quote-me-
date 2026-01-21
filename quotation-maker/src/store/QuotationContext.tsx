@@ -56,7 +56,7 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
     const [additionalNotes, setAdditionalNotes] = useState('');
 
     // Load from localStorage on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedProducts = localStorage.getItem('cityfire_products');
@@ -64,12 +64,15 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
             const storedSettings = localStorage.getItem('cityfire_settings');
 
             if (storedProducts) {
+                // eslint-disable-next-line
                 setProducts(JSON.parse(storedProducts));
             }
             if (storedHistory) {
+                // eslint-disable-next-line
                 setHistory(JSON.parse(storedHistory) as QuotationHistory[]);
             }
             if (storedSettings) {
+                // eslint-disable-next-line
                 setSettings({ ...defaultCompanySettings, ...JSON.parse(storedSettings) });
             }
 
