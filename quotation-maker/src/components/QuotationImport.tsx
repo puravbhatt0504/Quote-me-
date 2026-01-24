@@ -335,9 +335,11 @@ export default function QuotationImport() {
                     category: 'general' as const,
                     unit: '',
                     rate: 0,
+                    quantity: 0, // Explicitly set quantity to 0 for headers
                     description: 'Section Header'
                 };
-                addItem(headerProduct);
+                // We cast to any/Product because 'quantity' is not in the base Product interface
+                addItem(headerProduct as any);
                 return;
             }
 

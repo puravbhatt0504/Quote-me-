@@ -104,7 +104,9 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
 
     const addItem = (product: Product) => {
         if (!selectedItems.find(item => item.id === product.id)) {
-            setSelectedItems([...selectedItems, { ...product, quantity: 1, amount: product.rate }]);
+            // Check if product overrides quantity (e.g. headers with qty 0), otherwise default to 1
+            const initialQty = 'quantity' in product ? (product as any).quantity : 1;
+            setSelectedItems([...selectedItems, { ...product, quantity: initialQty, amount: product.rate * initialQty }]);
         }
     };
 
@@ -115,7 +117,8 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
     const updateQuantity = (productId: number, quantity: number) => {
         setSelectedItems(selectedItems.map(item => {
             if (item.id === productId) {
-                const newQuantity = Math.max(1, quantity);
+                // Allow quantity 0 for headers or optional items
+                const newQuantity = Math.max(0, quantity);
                 return { ...item, quantity: newQuantity, amount: item.rate * newQuantity };
             }
             return item;

@@ -51,9 +51,12 @@ export default function SelectedItems() {
                                             <input
                                                 id={`qty-${item.id}`}
                                                 type="number"
-                                                min="1"
+                                                min="0"
                                                 value={item.quantity}
-                                                onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    updateQuantity(item.id, isNaN(val) ? 0 : val);
+                                                }}
                                                 title={`Quantity for ${item.name}`}
                                                 className="w-16 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-center focus:outline-none focus:border-orange-500"
                                             />

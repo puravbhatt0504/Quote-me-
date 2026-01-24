@@ -118,13 +118,17 @@ export async function POST(request: NextRequest) {
             clientName: data.clientName || '',
             clientAddress: data.clientAddress || '',
             quotationDate: data.quotationDate || new Date().toISOString().split('T')[0],
-            items: Array.isArray(data.items) ? data.items.map((item: any) => ({
-                name: item.name || 'Unknown Item',
-                quantity: Number(item.quantity) || 1,
-                unit: item.unit || 'Each',
-                rate: Number(item.rate) || 0,
-                amount: Number(item.amount) || 0,
-            })) : [],
+            items: Array.isArray(data.items) ? data.items.map((item: any) => {
+                const qty = Number(item.quantity);
+                return {
+                    name: item.name || 'Unknown Item',
+                    // Allow 0 as valid quantity for headers, default to 1 only if NaN or undefined
+                    quantity: !isNaN(qty) ? qty : 1,
+                    unit: item.unit || 'Each',
+                    rate: Number(item.rate) || 0,
+                    amount: Number(item.amount) || 0,
+                };
+            }) : [],
             subtotal: Number(data.subtotal) || 0,
             discount: Number(data.discount) || 0,
             gst: Number(data.gst) || 0,
