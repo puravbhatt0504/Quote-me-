@@ -143,17 +143,37 @@ export async function generateExcelQuotation(params: GenerateExcelParams): Promi
     });
     rowNum++;
 
+    // Track row numbers for formula references
+    const firstItemRow = rowNum;
+
     // Items
     selectedItems.forEach((item, index) => {
         const itemRow = worksheet.getRow(rowNum);
+
+        // Extract original serial number from item name (e.g., "1.1 Description" -> "1.1")
+        const serialMatch = item.name.match(/^([\d]+(?:\.[\d]+)?)\s+/);
+        const serialNumber = serialMatch ? serialMatch[1] : String(index + 1);
+        // Strip the serial number from the description to avoid duplication
+        const displayName = serialMatch ? item.name.replace(/^[\d]+(?:\.[\d]+)?\s+/, '') : item.name;
+
+        // Check if this is a header (quantity 0 = section header)
+        const isHeader = item.quantity === 0;
+
         itemRow.values = [
-            index + 1,
-            item.name,
-            item.unit,
-            item.rate,
-            item.quantity,
-            item.amount
+            serialNumber,
+            displayName,
+            isHeader ? '' : item.unit,
+            isHeader ? '' : item.rate,
+            isHeader ? '' : item.quantity,
+            '' // Amount will be set as formula
         ];
+
+        // Set Amount formula: Rate × Qty (only for non-header rows)
+        if (!isHeader) {
+            const amountCell = itemRow.getCell(6);
+            amountCell.value = { formula: `D${rowNum}*E${rowNum}` };
+        }
+
         itemRow.eachCell(cell => {
             cell.border = {
                 top: { style: 'thin' },
@@ -162,32 +182,61 @@ export async function generateExcelQuotation(params: GenerateExcelParams): Promi
                 right: { style: 'thin' }
             };
         });
+
+        // Style headers differently
+        if (isHeader) {
+            itemRow.font = { bold: true };
+            itemRow.getCell(2).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF0F0F0' }
+            };
+        }
+
         rowNum++;
     });
 
-    // Subtotal row
+    const lastItemRow = rowNum - 1;
+
+    // Subtotal row with formula
     const subtotalRow = worksheet.getRow(rowNum);
-    subtotalRow.values = ['', '', '', '', 'Subtotal', Math.round(totals.subtotal)];
+    subtotalRow.values = ['', '', '', '', 'Subtotal', ''];
+    subtotalRow.getCell(6).value = { formula: `SUM(F${firstItemRow}:F${lastItemRow})` };
     subtotalRow.font = { bold: true };
+    const subtotalCellRef = `F${rowNum}`;
     rowNum++;
 
-    // Discount row if applicable
+    // Discount row if applicable (with formula)
+    let afterDiscountRef = subtotalCellRef;
     if (applyDiscount) {
         const discountRow = worksheet.getRow(rowNum);
-        discountRow.values = ['', '', '', '', `Discount (${discountPercentage}%)`, -Math.round(totals.discount)];
+        discountRow.values = ['', '', '', '', `Discount (${discountPercentage}%)`, ''];
+        discountRow.getCell(6).value = { formula: `-${subtotalCellRef}*${discountPercentage}/100` };
+        afterDiscountRef = `(${subtotalCellRef}+F${rowNum})`;
         rowNum++;
     }
 
-    // GST row if applicable
+    // GST row if applicable (with formula)
+    let gstRef = '';
     if (includeGST) {
         const gstRow = worksheet.getRow(rowNum);
-        gstRow.values = ['', '', '', '', 'GST (18%)', Math.round(totals.gst)];
+        gstRow.values = ['', '', '', '', 'GST (18%)', ''];
+        gstRow.getCell(6).value = { formula: `${afterDiscountRef}*0.18` };
+        gstRef = `F${rowNum}`;
         rowNum++;
     }
 
-    // Total row
+    // Total row with formula
     const totalRow = worksheet.getRow(rowNum);
-    totalRow.values = ['', '', '', '', 'Total', Math.round(totals.total)];
+    totalRow.values = ['', '', '', '', 'Total', ''];
+
+    // Build total formula
+    let totalFormula = afterDiscountRef;
+    if (includeGST && gstRef) {
+        totalFormula = `${afterDiscountRef}+${gstRef}`;
+    }
+    totalRow.getCell(6).value = { formula: totalFormula };
+
     totalRow.font = { bold: true, size: 12 };
     totalRow.getCell(6).fill = {
         type: 'pattern',

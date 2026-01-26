@@ -125,14 +125,24 @@ export function generatePdfQuotation(params: GeneratePdfParams): void {
 
     // --- Items Table ---
     const tableHeaders = ['S.N.', 'Description', 'Unit', 'Rate', 'Qty', 'Amount (INR)'];
-    const tableData = selectedItems.map((item, index) => [
-        index + 1,
-        item.name,
-        item.unit,
-        `Rs. ${item.rate.toLocaleString('en-IN')}`,
-        item.quantity,
-        `Rs. ${item.amount.toLocaleString('en-IN')}`
-    ]);
+    const tableData = selectedItems.map((item, index) => {
+        // Extract original serial number from item name
+        const serialMatch = item.name.match(/^([\d]+(?:\.[\d]+)?)\s+/);
+        const serialNumber = serialMatch ? serialMatch[1] : String(index + 1);
+        // Strip the serial number from the description
+        const displayName = serialMatch ? item.name.replace(/^[\d]+(?:\.[\d]+)?\s+/, '') : item.name;
+        // Check if this is a header (quantity 0)
+        const isHeader = item.quantity === 0;
+
+        return [
+            serialNumber,
+            displayName,
+            isHeader ? '' : item.unit,
+            isHeader ? '' : `Rs. ${item.rate.toLocaleString('en-IN')}`,
+            isHeader ? '-' : item.quantity,
+            isHeader ? '' : `Rs. ${item.amount.toLocaleString('en-IN')}`
+        ];
+    });
 
     // Footer Rows for Totals
     const footerRows = [];
@@ -182,6 +192,13 @@ export function generatePdfQuotation(params: GeneratePdfParams): void {
             // Style header rows specifically if needed
             if (data.section === 'body') {
                 const rowIndex = data.row.index;
+
+                // Style section headers (rows with quantity 0)
+                if (rowIndex < selectedItems.length && selectedItems[rowIndex].quantity === 0) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fillColor = [245, 245, 245];
+                }
+
                 // If it's one of the footer rows (after selectedItems)
                 if (rowIndex >= selectedItems.length) {
 

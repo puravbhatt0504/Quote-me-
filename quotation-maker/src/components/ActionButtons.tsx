@@ -93,16 +93,26 @@ function PreviewModal({ isOpen, onClose, onDownloadExcel, onDownloadPdf }: { isO
                                 </tr>
                             </thead>
                             <tbody>
-                                {selectedItems.map((item, index) => (
-                                    <tr key={item.id}>
-                                        <td className="border border-gray-800 p-2">{index + 1}</td>
-                                        <td className="border border-gray-800 p-2">{item.name}</td>
-                                        <td className="border border-gray-800 p-2">{item.unit}</td>
-                                        <td className="border border-gray-800 p-2">₹ {item.rate.toLocaleString('en-IN')}</td>
-                                        <td className="border border-gray-800 p-2">{item.quantity}</td>
-                                        <td className="border border-gray-800 p-2">₹ {item.amount.toLocaleString('en-IN')}</td>
-                                    </tr>
-                                ))}
+                                {selectedItems.map((item, index) => {
+                                    // Extract original serial number from item name
+                                    const serialMatch = item.name.match(/^([\d]+(?:\.[\d]+)?)\s+/);
+                                    const serialNumber = serialMatch ? serialMatch[1] : String(index + 1);
+                                    // Strip the serial number from the description
+                                    const displayName = serialMatch ? item.name.replace(/^[\d]+(?:\.[\d]+)?\s+/, '') : item.name;
+                                    // Check if this is a header (quantity 0)
+                                    const isHeader = item.quantity === 0;
+
+                                    return (
+                                        <tr key={item.id} className={isHeader ? 'bg-gray-100 font-semibold' : ''}>
+                                            <td className="border border-gray-800 p-2">{serialNumber}</td>
+                                            <td className="border border-gray-800 p-2">{displayName}</td>
+                                            <td className="border border-gray-800 p-2">{isHeader ? '' : item.unit}</td>
+                                            <td className="border border-gray-800 p-2">{isHeader ? '' : `₹ ${item.rate.toLocaleString('en-IN')}`}</td>
+                                            <td className="border border-gray-800 p-2">{isHeader ? '-' : item.quantity}</td>
+                                            <td className="border border-gray-800 p-2">{isHeader ? '' : `₹ ${item.amount.toLocaleString('en-IN')}`}</td>
+                                        </tr>
+                                    );
+                                })}
                                 <tr>
                                     <td colSpan={5} className="border border-gray-800 p-2 text-right font-semibold">Subtotal</td>
                                     <td className="border border-gray-800 p-2">₹ {Math.round(totals.subtotal).toLocaleString('en-IN')}</td>

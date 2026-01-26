@@ -40,42 +40,58 @@ export default function SelectedItems() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {selectedItems.map((item, index) => (
-                                    <tr key={item.id} className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors">
-                                        <td className="px-4 py-3 text-sm text-white">{index + 1}</td>
-                                        <td className="px-4 py-3 text-sm text-white">{item.name}</td>
-                                        <td className="px-4 py-3 text-sm text-white">{item.unit}</td>
-                                        <td className="px-4 py-3 text-sm text-white">₹ {item.rate.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-3">
-                                            <label htmlFor={`qty-${item.id}`} className="sr-only">Quantity for {item.name}</label>
-                                            <input
-                                                id={`qty-${item.id}`}
-                                                type="number"
-                                                min="0"
-                                                value={item.quantity}
-                                                onChange={(e) => {
-                                                    const val = parseInt(e.target.value);
-                                                    updateQuantity(item.id, isNaN(val) ? 0 : val);
-                                                }}
-                                                title={`Quantity for ${item.name}`}
-                                                className="w-16 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-center focus:outline-none focus:border-orange-500"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-white font-medium">
-                                            ₹ {item.amount.toLocaleString('en-IN')}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <button
-                                                onClick={() => removeItem(item.id)}
-                                                title={`Remove ${item.name}`}
-                                                aria-label={`Remove ${item.name}`}
-                                                className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {selectedItems.map((item, index) => {
+                                    // Extract original serial number from item name (e.g., "1.1 Description" -> "1.1")
+                                    const serialMatch = item.name.match(/^([\d]+(?:\.[\d]+)?)\s+/);
+                                    const serialNumber = serialMatch ? serialMatch[1] : String(index + 1);
+                                    // Strip the serial number from the description to avoid duplication
+                                    const displayName = serialMatch ? item.name.replace(/^[\d]+(?:\.[\d]+)?\s+/, '') : item.name;
+                                    // Check if this is a header (quantity 0)
+                                    const isHeader = item.quantity === 0;
+
+                                    return (
+                                        <tr key={item.id} className={`border-b border-slate-700 hover:bg-slate-700/30 transition-colors ${isHeader ? 'bg-slate-800/50' : ''}`}>
+                                            <td className="px-4 py-3 text-sm text-white">{serialNumber}</td>
+                                            <td className={`px-4 py-3 text-sm text-white ${isHeader ? 'font-semibold' : ''}`}>{displayName}</td>
+                                            <td className="px-4 py-3 text-sm text-white">{isHeader ? '' : item.unit}</td>
+                                            <td className="px-4 py-3 text-sm text-white">{isHeader ? '' : `₹ ${item.rate.toLocaleString('en-IN')}`}</td>
+                                            <td className="px-4 py-3">
+                                                {isHeader ? (
+                                                    <span className="text-slate-500 text-sm">-</span>
+                                                ) : (
+                                                    <>
+                                                        <label htmlFor={`qty-${item.id}`} className="sr-only">Quantity for {item.name}</label>
+                                                        <input
+                                                            id={`qty-${item.id}`}
+                                                            type="number"
+                                                            min="0"
+                                                            value={item.quantity}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value);
+                                                                updateQuantity(item.id, isNaN(val) ? 0 : val);
+                                                            }}
+                                                            title={`Quantity for ${item.name}`}
+                                                            className="w-16 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-center focus:outline-none focus:border-orange-500"
+                                                        />
+                                                    </>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-white font-medium">
+                                                {isHeader ? '' : `₹ ${item.amount.toLocaleString('en-IN')}`}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={() => removeItem(item.id)}
+                                                    title={`Remove ${item.name}`}
+                                                    aria-label={`Remove ${item.name}`}
+                                                    className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                             <tfoot>
                                 <tr className="bg-gradient-to-r from-orange-500/5 to-transparent">

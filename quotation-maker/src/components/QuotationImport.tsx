@@ -44,7 +44,7 @@ export default function QuotationImport() {
         setClientAddress,
         setQuotationDate,
         setAdditionalNotes,
-        addItem,
+        addItems,
         clearSelectedItems,
         setProducts,
     } = useQuotation();
@@ -264,8 +264,10 @@ export default function QuotationImport() {
         // Clear existing items
         clearSelectedItems();
 
-        // Try to match extracted items with existing products or add as new
-        // Helper function to finding best matching product using token-based fuzzy search
+        // Build up all items to add in BULK (to avoid React state batching issues)
+        const itemsToAdd: any[] = [];
+        const newProducts: any[] = [];
+
         // Helper function to finding best matching product using token-based fuzzy search
         const findBestMatch = (extractedName: string) => {
             // Clean the name: Remove item numbers (e.g. "1. ", "6.1 ", "A. ") and generic words
@@ -324,13 +326,25 @@ export default function QuotationImport() {
         };
 
         let lastHeader = '';
+        let isFirstItem = true;
+
         extractedData.items.forEach((item, index) => {
+            // Check if the item has a serial number prefix (like "1 ", "1.1 ", "6.7 ")
+            const hasSerialNumber = /^[\d]+(?:\.[\d]+)?\s+/.test(item.name);
+
             // If it's a header (detected by Qty 0 post-processing), keep it as text-only context
             if (item.quantity === 0) {
+                // Skip document titles: first item without a serial number (like "FIRE FIGHTING WORK QUANTITY OF MATERIAL")
+                if (isFirstItem && !hasSerialNumber) {
+                    console.log('Skipping document title:', item.name);
+                    isFirstItem = false;
+                    return;
+                }
+
                 lastHeader = item.name;
                 // Add header as a comment/text item (Rate 0)
                 const headerProduct = {
-                    id: Date.now() + index,
+                    id: Math.random() * 1000000000 + index,
                     name: item.name,
                     category: 'general' as const,
                     unit: '',
@@ -338,10 +352,12 @@ export default function QuotationImport() {
                     quantity: 0, // Explicitly set quantity to 0 for headers
                     description: 'Section Header'
                 };
-                // We cast to any/Product because 'quantity' is not in the base Product interface
-                addItem(headerProduct as any);
+                itemsToAdd.push(headerProduct);
+                isFirstItem = false;
                 return;
             }
+
+            isFirstItem = false;
 
             // Context Aware Matching
             let searchName = item.name;
@@ -359,34 +375,36 @@ export default function QuotationImport() {
                 // PRIORITIZE Database Rate if the extracted rate is 0 or missing
                 const appliedRate = (item.rate && item.rate > 0) ? item.rate : matchingProduct.rate;
 
-                addItem({
+                itemsToAdd.push({
                     ...matchingProduct,
-                    // If the extracted name is very different, we might want to keep the extracted name 
-                    // so the user recognizes it from their PDF, but usually improving the DB entry is better.
-                    // For now, let's keep the extracted name as the primary name for the quote item 
-                    // so it matches the input document, but using the RATE from our DB.
+                    // CRITICAL: Override with unique ID to prevent deduplication
+                    id: Math.random() * 1000000000 + index,
                     name: item.name,
                     unit: item.unit || matchingProduct.unit,
                     rate: appliedRate
                 });
             } else {
-                // Add as a new product
+                // Add as a new product with a truly unique ID
                 const newProduct = {
-                    id: Date.now() + index,
+                    id: Math.random() * 1000000000 + index,
                     name: item.name,
                     category: 'general' as const,
                     unit: item.unit || 'Each',
                     rate: item.rate || 0,
                 };
 
-                // Add to products list (optional: maybe we shouldn't clutter the global list?)
-                // For now, pushing to global list as temporary "custom" items in context is fine
-                setProducts([...products, newProduct]);
-
-                // Add to selected items
-                addItem(newProduct);
+                newProducts.push(newProduct);
+                itemsToAdd.push(newProduct);
             }
         });
+
+        // BULK UPDATE: Add all new products to the products list at once
+        if (newProducts.length > 0) {
+            setProducts([...products, ...newProducts]);
+        }
+
+        // BULK UPDATE: Add all items to selected items at once
+        addItems(itemsToAdd);
 
         // Close the import modal
         setIsOpen(false);
@@ -580,6 +598,7 @@ export default function QuotationImport() {
                                                 <table className="w-full text-sm">
                                                     <thead>
                                                         <tr className="border-b border-gray-200 dark:border-gray-700">
+                                                            <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300 w-12">S.N.</th>
                                                             <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Item</th>
                                                             <th className="text-right py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Qty</th>
                                                             <th className="text-right py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Rate</th>
@@ -588,54 +607,65 @@ export default function QuotationImport() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {extractedData.items.map((item, index) => (
-                                                            <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                                                <td className="py-2 px-3 text-gray-600 dark:text-gray-400 max-w-md truncate" title={item.name}>
-                                                                    <span className={item.quantity === 0 ? "font-bold text-gray-800 dark:text-gray-200" : ""}>
-                                                                        {item.name}
-                                                                    </span>
-                                                                    {item.quantity > 0 && <span className="text-xs text-gray-400 ml-1">({item.unit})</span>}
-                                                                </td>
-                                                                <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-400">
-                                                                    {item.quantity > 0 ? item.quantity : '-'}
-                                                                </td>
-                                                                <td className={`py-2 px-3 text-right ${item.rate === 0 && item.quantity > 0 ? 'text-orange-500 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                                    {item.quantity > 0 ? formatCurrency(item.rate) : '-'}
-                                                                </td>
-                                                                <td className="py-2 px-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                                                                    {item.quantity > 0 ? formatCurrency(item.amount) : '-'}
-                                                                </td>
-                                                                <td className="py-2 px-3 text-center flex justify-center gap-1">
-                                                                    {item.quantity > 0 && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() => handleFindRate(index, item.name)}
-                                                                                disabled={loadingRates.has(index)}
-                                                                                title="AI: Find Market Rate"
-                                                                                className={`p-1.5 rounded-lg transition-colors ${fetchedRates.has(index)
-                                                                                    ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
-                                                                                    : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                                                                                    }`}
-                                                                            >
-                                                                                {loadingRates.has(index) ? (
-                                                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                                                ) : (
-                                                                                    <Wand2 className="w-4 h-4" />
-                                                                                )}
-                                                                            </button>
+                                                        {extractedData.items.map((item, index) => {
+                                                            // Extract original serial number from item name
+                                                            const serialMatch = item.name.match(/^([\d]+(?:\.[\d]+)?)\s+/);
+                                                            const serialNumber = serialMatch ? serialMatch[1] : '-';
+                                                            // Strip the serial number from the description
+                                                            const displayName = serialMatch ? item.name.replace(/^[\d]+(?:\.[\d]+)?\s+/, '') : item.name;
+                                                            // Check if this is a header (quantity 0)
+                                                            const isHeader = item.quantity === 0;
 
-                                                                            <button
-                                                                                onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.name + ' price india')}`, '_blank')}
-                                                                                title="Search Google manually"
-                                                                                className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                                            >
-                                                                                <Search className="w-4 h-4" />
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
+                                                            return (
+                                                                <tr key={index} className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isHeader ? 'bg-gray-50 dark:bg-gray-800/30' : ''}`}>
+                                                                    <td className="py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">{serialNumber}</td>
+                                                                    <td className="py-2 px-3 text-gray-600 dark:text-gray-400 max-w-md truncate" title={item.name}>
+                                                                        <span className={isHeader ? "font-bold text-gray-800 dark:text-gray-200" : ""}>
+                                                                            {displayName}
+                                                                        </span>
+                                                                        {!isHeader && <span className="text-xs text-gray-400 ml-1">({item.unit})</span>}
+                                                                    </td>
+                                                                    <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-400">
+                                                                        {isHeader ? '-' : item.quantity}
+                                                                    </td>
+                                                                    <td className={`py-2 px-3 text-right ${item.rate === 0 && !isHeader ? 'text-orange-500 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                                        {isHeader ? '' : formatCurrency(item.rate)}
+                                                                    </td>
+                                                                    <td className="py-2 px-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                                                                        {isHeader ? '' : formatCurrency(item.amount)}
+                                                                    </td>
+                                                                    <td className="py-2 px-3 text-center flex justify-center gap-1">
+                                                                        {item.quantity > 0 && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => handleFindRate(index, item.name)}
+                                                                                    disabled={loadingRates.has(index)}
+                                                                                    title="AI: Find Market Rate"
+                                                                                    className={`p-1.5 rounded-lg transition-colors ${fetchedRates.has(index)
+                                                                                        ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
+                                                                                        : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                                                                                        }`}
+                                                                                >
+                                                                                    {loadingRates.has(index) ? (
+                                                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                                                    ) : (
+                                                                                        <Wand2 className="w-4 h-4" />
+                                                                                    )}
+                                                                                </button>
+
+                                                                                <button
+                                                                                    onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.name + ' price india')}`, '_blank')}
+                                                                                    title="Search Google manually"
+                                                                                    className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                                                                >
+                                                                                    <Search className="w-4 h-4" />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
                                                     </tbody>
                                                 </table>
                                             </div>

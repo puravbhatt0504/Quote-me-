@@ -19,6 +19,7 @@ interface QuotationContextType {
     additionalNotes: string;
     setProducts: (products: Product[]) => void;
     addItem: (product: Product) => void;
+    addItems: (products: Product[]) => void;
     removeItem: (productId: number) => void;
     updateQuantity: (productId: number, quantity: number) => void;
     toggleProduct: (productId: number) => void;
@@ -103,11 +104,21 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
     }, [settings]);
 
     const addItem = (product: Product) => {
-        if (!selectedItems.find(item => item.id === product.id)) {
+        setSelectedItems(prev => {
+            if (prev.find(item => item.id === product.id)) return prev;
             // Check if product overrides quantity (e.g. headers with qty 0), otherwise default to 1
             const initialQty = 'quantity' in product ? (product as any).quantity : 1;
-            setSelectedItems([...selectedItems, { ...product, quantity: initialQty, amount: product.rate * initialQty }]);
-        }
+            return [...prev, { ...product, quantity: initialQty, amount: product.rate * initialQty }];
+        });
+    };
+
+    // Bulk add items - for importing multiple items at once
+    const addItems = (productsToAdd: Product[]) => {
+        const newItems: SelectedItem[] = productsToAdd.map(product => {
+            const initialQty = 'quantity' in product ? (product as any).quantity : 1;
+            return { ...product, quantity: initialQty, amount: product.rate * initialQty };
+        });
+        setSelectedItems(newItems);
     };
 
     const removeItem = (productId: number) => {
@@ -203,6 +214,7 @@ export function QuotationProvider({ children }: { children: ReactNode }) {
                 additionalNotes,
                 setProducts,
                 addItem,
+                addItems,
                 removeItem,
                 updateQuantity,
                 toggleProduct,

@@ -83,14 +83,16 @@ export async function POST(request: NextRequest) {
         }
 
         Instructions:
-        1. Structure Integrity: Capture items EXACTLY as listed.
-        2. Pricing Logic: 
-           - **HEADERS:** If Item 1 is a descriptive header for subsequent items, set **Quantity = 0**, Rate = 0, Amount = 0.
+        1. Structure Integrity: Capture items EXACTLY as listed with their original numbering.
+        2. SKIP Document Titles: Lines like "FIRE FIGHTING WORK QUANTITY OF MATERIAL" or "BOQ FOR FIRE FIGHTING SYSTEM" that appear at the top as document titles should be SKIPPED entirely - do NOT include them as items.
+        3. Section Headers: Section headers like "FIRE DETECTION & ALARM SYSTEM" that group items should be included WITH THEIR ORIGINAL NUMBER if they have one. Set Quantity = 0, Rate = 0, Amount = 0 for these.
+        4. Pricing Logic: 
+           - **HEADERS:** If an item is a descriptive header for subsequent sub-items (like "1 Supplying... pump" followed by "1.1 2280 lpm"), set **Quantity = 0**, Rate = 0, Amount = 0 for the header.
            - **SUB-ITEMS:** Ensure the specific billable sub-item (e.g. 1.1) has the correct Quantity and Rate.
-        3. Inconsistent Numbering: Caputre all text lines even if numbering is weird.
-        4. Sections: Broad headers like "Section I: Fire Fighting" -> Quantity 0.
-        5. Values: If rate/amount is blank or zero, use 0. However, if you are highly confident in a standard market rate (INR) for a common item, you MAY provide an estimate, but prefer 0 so the system can use the database price.
-        6. Return the list in the exact order of the document.`;
+        5. Serial Numbers: ALWAYS preserve the original item numbering (1, 1.1, 2, 2.1, 6.1, 6.6, etc.) in the name field.
+        6. Inconsistent Numbering: Capture all text lines even if numbering is weird.
+        7. Values: If rate/amount is blank or zero, use 0. However, if you are highly confident in a standard market rate (INR) for a common item, you MAY provide an estimate, but prefer 0 so the system can use the database price.
+        8. Return the list in the exact order of the document.`;
 
         console.log('Sending request to Gemini...');
         const result = await model.generateContent([
