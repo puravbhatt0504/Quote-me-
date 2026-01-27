@@ -52,11 +52,16 @@ export async function POST(request: NextRequest) {
         const base64Data = buffer.toString('base64');
         console.log('File converted to base64');
 
-        // 5. Gemini API Call
+        // 5. Gemini API Call with Retry Logic and Fallback Models
         console.log('Initializing Gemini client...');
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-2.5-flash as it appeared in the check-models list and likely has better limits than exp
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        // List of models to try in order (fallback mechanism)
+        const modelsToTry = [
+            'gemini-2.0-flash-exp',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-8b',
+        ];
 
         const prompt = `Extract structured data from this ${file.type.startsWith('image') ? 'image' : 'PDF'} BOQ (Bill of Quantities) or Quotation. 
         Return ONLY valid JSON. No markdown formatting.
@@ -94,16 +99,85 @@ export async function POST(request: NextRequest) {
         7. Values: If rate/amount is blank or zero, use 0. However, if you are highly confident in a standard market rate (INR) for a common item, you MAY provide an estimate, but prefer 0 so the system can use the database price.
         8. Return the list in the exact order of the document.`;
 
-        console.log('Sending request to Gemini...');
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: file.type
+        // Exponential backoff retry function
+        const retryWithBackoff = async (modelName: string, maxRetries: number = 3): Promise<any> => {
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const model = genAI.getGenerativeModel({ model: modelName });
+                    console.log(`Attempt ${attempt + 1}/${maxRetries} with model: ${modelName}`);
+
+                    const result = await model.generateContent([
+                        prompt,
+                        {
+                            inlineData: {
+                                data: base64Data,
+                                mimeType: file.type
+                            }
+                        }
+                    ]);
+
+                    return result;
+                } catch (error: any) {
+                    const isOverloaded = error.message?.includes('overloaded') ||
+                        error.message?.includes('503') ||
+                        error.message?.includes('RESOURCE_EXHAUSTED');
+
+                    const isLastAttempt = attempt === maxRetries - 1;
+
+                    if (isOverloaded && !isLastAttempt) {
+                        // Exponential backoff: wait 2^attempt seconds
+                        const waitTime = Math.pow(2, attempt) * 1000;
+                        console.log(`Model overloaded. Waiting ${waitTime}ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        continue;
+                    }
+
+                    // If it's the last attempt or a different error, throw it
+                    throw error;
                 }
             }
-        ]);
+            throw new Error('Max retries exceeded');
+        };
+
+        // Try each model in sequence
+        let result: any = null;
+        let lastError: any = null;
+
+        console.log('Sending request to Gemini with fallback support...');
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`Trying model: ${modelName}`);
+                result = await retryWithBackoff(modelName, 3);
+                console.log(`Successfully got response from model: ${modelName}`);
+                break; // Success! Exit the loop
+            } catch (error: any) {
+                console.error(`Model ${modelName} failed:`, error.message);
+                lastError = error;
+
+                // Check if it's a quota/overload error
+                const isOverloadError = error.message?.includes('overloaded') ||
+                    error.message?.includes('503') ||
+                    error.message?.includes('RESOURCE_EXHAUSTED') ||
+                    error.message?.includes('429');
+
+                if (!isOverloadError) {
+                    // If it's not an overload error, don't try other models
+                    throw error;
+                }
+
+                // Continue to next model
+                console.log('Trying next fallback model...');
+            }
+        }
+
+        // If all models failed
+        if (!result) {
+            console.error('All models failed. Last error:', lastError);
+            throw new Error(
+                'All AI models are currently overloaded. This usually happens during peak usage times. ' +
+                'Please try again in a few minutes. If the problem persists, the file might be too large or complex.'
+            );
+        }
 
         console.log('Received response from Gemini');
         const responseText = result.response.text();

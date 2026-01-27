@@ -75,6 +75,56 @@ export default function QuotationImport() {
         }
     };
 
+
+    const optimizeFile = async (file: File): Promise<File> => {
+        // If it's an image and larger than 2MB, compress it
+        if (file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = document.createElement('img');
+
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(file);
+                });
+
+                // Calculate new dimensions (max 1920px width/height)
+                const maxDimension = 1920;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = (height / width) * maxDimension;
+                        width = maxDimension;
+                    } else {
+                        width = (width / height) * maxDimension;
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Convert to blob with compression
+                const blob = await new Promise<Blob>((resolve) => {
+                    canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.85);
+                });
+
+                URL.revokeObjectURL(img.src);
+                return new File([blob], file.name, { type: 'image/jpeg' });
+            } catch (error) {
+                console.error('Image optimization failed, using original:', error);
+                return file;
+            }
+        }
+
+        return file;
+    };
+
     const handleFile = async (file: File) => {
         // Validate file type
         const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
@@ -97,10 +147,16 @@ export default function QuotationImport() {
         setExtractedData(null);
 
         try {
+            // Optimize file if needed
+            const optimizedFile = await optimizeFile(file);
+            if (optimizedFile !== file) {
+                console.log(`File optimized: ${file.size} -> ${optimizedFile.size} bytes`);
+            }
+
             setStatus('processing');
 
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', optimizedFile);
 
             const response = await fetch('/api/extract-quotation', {
                 method: 'POST',
@@ -119,6 +175,26 @@ export default function QuotationImport() {
                     }
                     throw new Error(errorMessage);
                 }
+
+                // Check for overload/service errors
+                if (response.status === 503 || response.status === 500) {
+                    const errorMsg = result.error || result.details || 'Service temporarily unavailable';
+
+                    // Check if it's an overload error
+                    if (errorMsg.toLowerCase().includes('overload')) {
+                        throw new Error(
+                            '⚠️ AI Service Overloaded\n\n' +
+                            'The AI models are currently experiencing high traffic. ' +
+                            'The system has already tried multiple models and retry attempts.\n\n' +
+                            '💡 Suggestions:\n' +
+                            '• Wait 2-3 minutes and try again\n' +
+                            '• Try during off-peak hours\n' +
+                            '• If the PDF is very large, try splitting it into smaller sections'
+                        );
+                    }
+                    throw new Error(errorMsg);
+                }
+
                 throw new Error(result.error || 'Failed to extract quotation data');
             }
 
@@ -543,15 +619,25 @@ export default function QuotationImport() {
                                     <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                                         Extraction Failed
                                     </p>
-                                    <p className="text-sm text-red-600 dark:text-red-400 mb-6">
+                                    <p className="text-sm text-red-600 dark:text-red-400 mb-6 whitespace-pre-line max-w-md mx-auto">
                                         {error}
                                     </p>
-                                    <button
-                                        onClick={resetState}
-                                        className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Try Again
-                                    </button>
+                                    <div className="flex gap-3 justify-center">
+                                        {selectedFile && (
+                                            <button
+                                                onClick={() => handleFile(selectedFile)}
+                                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                                            >
+                                                Retry Same File
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={resetState}
+                                            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            Upload Different File
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
